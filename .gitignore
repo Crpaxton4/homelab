@@ -1,1 +1,10 @@
 .obsidian/workspace.json
+
+# Beads: only .beads/config.yaml is tracked. The Dolt database is machine-local and syncs
+# through refs/dolt/data, not the working tree. bd init writes the rest of .beads/.gitignore.
+.beads/issues.jsonl
+.beads/backup/
+
+# Claude Code: settings.json is shared, everything else (worktrees, local overrides) is not.
+.claude/*
+!.claude/settings.json

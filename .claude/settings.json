@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bd dolt pull || true"
+          },
+          {
+            "type": "command",
+            "command": "bd prime --hook-json"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bd dolt push || true"
+          }
+        ]
+      }
+    ]
+  }
+}
