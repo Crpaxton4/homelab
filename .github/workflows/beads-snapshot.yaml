@@ -1,0 +1,53 @@
+name: beads-snapshot
+
+# Beads issue history lives in refs/dolt/data, a custom git ref. GitHub cannot protect it:
+# rulesets and branch protection target branches and tags only, and `on: push` never fires
+# for custom refs. So protection here is recoverability — a dated, immutable snapshot ref
+# taken daily, from which a clobbered or corrupted refs/dolt/data can be restored.
+# See README.md ("Recovering the issue database") for the restore procedure.
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: beads-snapshot
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Snapshot refs/dolt/data and prune old snapshots
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          if ! git ls-remote --exit-code "$remote" refs/dolt/data >/dev/null 2>&1; then
+            echo "No refs/dolt/data on the remote yet — nothing to snapshot."
+            exit 0
+          fi
+
+          git init -q snapshot
+          cd snapshot
+          git remote add origin "$remote"
+          git fetch -q --no-tags origin +refs/dolt/data:refs/dolt/data
+
+          today="$(date -u +%Y-%m-%d)"
+          # Force so that a same-day re-run refreshes today's snapshot instead of failing.
+          git push -q origin "+refs/dolt/data:refs/dolt/snapshots/${today}"
+          echo "Snapshotted $(git rev-parse refs/dolt/data) -> refs/dolt/snapshots/${today}"
+
+          # Prune snapshots older than 30 days. ISO dates sort lexicographically.
+          cutoff="$(date -u -d '30 days ago' +%Y-%m-%d)"
+          git ls-remote origin 'refs/dolt/snapshots/*' | cut -f2 | while read -r ref; do
+            if [[ "${ref##*/}" < "$cutoff" ]]; then
+              git push -q origin ":${ref}"
+              echo "Pruned ${ref}"
+            fi
+          done
