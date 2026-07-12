@@ -9,7 +9,7 @@
           },
           {
             "type": "command",
-            "command": "bd prime --hook-json"
+            "command": "bd prime --hook-json || true"
           }
         ]
       }
